@@ -34,5 +34,3 @@ Zehn is an AI-powered emotional reflection engine—a digital sanctuary designed
 ## Philosophy
 
 Zehn is built on the philosophy of **"Vibe Coding"**—moving away from rigid syntax and technical overhead to focus purely on the essence, feeling, and flow of creation. The interface avoids "AI-isms" ("I understand how you feel") in favor of concise, impactful, and vibe-coded language.
-
-*Bazaar mein shor hai, thora side pe ho jao.*
