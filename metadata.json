@@ -1,0 +1,8 @@
+{
+  "name": "Zehn",
+  "description": "An AI-powered emotional reflection engine and vibe-coded companion.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile data.",
+      "type": "object",
+      "properties": {
+        "bio": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "timestamp"
+        }
+      },
+      "required": [
+        "updatedAt"
+      ]
+    },
+    "Vibe": {
+      "title": "Vibe",
+      "description": "An emotional log entry created by a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this vibe."
+        },
+        "date": {
+          "type": "string",
+          "description": "ISO date string representing the vibe's time."
+        },
+        "transcription": {
+          "type": "string"
+        },
+        "tone": {
+          "type": "string"
+        },
+        "energyLevel": {
+          "type": "number"
+        },
+        "sentiment": {
+          "type": "string"
+        },
+        "culturalContext": {
+          "type": "string"
+        },
+        "verse": {
+          "type": "string"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "uiState": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "type": "string"
+            },
+            "spacing": {
+              "type": "string"
+            },
+            "animationSpeed": {
+              "type": "number"
+            }
+          }
+        },
+        "createdAt": {
+          "type": "timestamp"
+        },
+        "updatedAt": {
+          "type": "timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "date",
+        "tone",
+        "energyLevel",
+        "sentiment",
+        "uiState",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profile collection."
+    },
+    "vibes/{vibeId}": {
+      "schema": {
+        "$ref": "#/entities/Vibe"
+      },
+      "description": "Global vibes collection, access restricted to the vibe's owner."
+    }
+  }
+}

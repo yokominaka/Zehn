@@ -1,0 +1,134 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getAuthUid() {
+      return request.auth.uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUiState(ui) {
+      return ui is map
+        && ui.keys().hasAll(['color', 'spacing', 'animationSpeed'])
+        && ui.keys().size() <= 3
+        && ui.color is string && ui.color.size() <= 32
+        && ui.spacing is string && ui.spacing.size() <= 32
+        && ui.animationSpeed is number;
+    }
+    
+    // Abstracted Validation for Vibe Creation
+    function isValidVibeCreate(data) {
+      return data.keys().hasAll(['userId', 'date', 'tone', 'energyLevel', 'sentiment', 'uiState', 'createdAt', 'updatedAt'])
+        // Optional keys allowed via fallback sizing or strict schema: ID, transcription, culturalContext, verse, imageUrl
+        // Instead of hasOnly (which isn't on lists), we check types for presence
+        && data.userId == getAuthUid()
+        && data.date is string && data.date.size() <= 64
+        && data.tone is string && data.tone.size() <= 128
+        && data.energyLevel is number
+        && data.sentiment is string && data.sentiment.size() <= 1024
+        && isValidUiState(data.uiState)
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && (!data.keys().hasAny(['transcription']) || (data.transcription is string && data.transcription.size() <= 10000))
+        && (!data.keys().hasAny(['culturalContext']) || (data.culturalContext is string && data.culturalContext.size() <= 10000))
+        && (!data.keys().hasAny(['verse']) || (data.verse is string && data.verse.size() <= 1024))
+        && (!data.keys().hasAny(['imageUrl']) || (data.imageUrl is string && data.imageUrl.size() <= 200000));
+    }
+
+    function isValidVibeUpdate(data, diff) {
+       // Validate that immutable fields are not changed
+       return data.userId == existing().userId
+         && data.createdAt == existing().createdAt
+         && data.updatedAt == request.time
+         && (!diff.affectedKeys().hasAny(['date']) || (data.date is string && data.date.size() <= 64))
+         && (!diff.affectedKeys().hasAny(['tone']) || (data.tone is string && data.tone.size() <= 128))
+         && (!diff.affectedKeys().hasAny(['energyLevel']) || (data.energyLevel is number))
+         && (!diff.affectedKeys().hasAny(['sentiment']) || (data.sentiment is string && data.sentiment.size() <= 1024))
+         && (!diff.affectedKeys().hasAny(['uiState']) || isValidUiState(data.uiState))
+         && (!diff.affectedKeys().hasAny(['transcription']) || (data.transcription is string && data.transcription.size() <= 10000))
+         && (!diff.affectedKeys().hasAny(['culturalContext']) || (data.culturalContext is string && data.culturalContext.size() <= 10000))
+         && (!diff.affectedKeys().hasAny(['verse']) || (data.verse is string && data.verse.size() <= 1024))
+         && (!diff.affectedKeys().hasAny(['imageUrl']) || (data.imageUrl is string && data.imageUrl.size() <= 200000));
+    }
+
+
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['updatedAt'])
+        && (!data.keys().hasAny(['bio']) || (data.bio is string && data.bio.size() <= 400))
+        && (!data.keys().hasAny(['avatarUrl']) || (data.avatarUrl is string && data.avatarUrl.size() <= 200000))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidUserUpdate(data, diff) {
+       return data.updatedAt == request.time
+         && (!diff.affectedKeys().hasAny(['bio']) || (data.bio is string && data.bio.size() <= 400))
+         && (!diff.affectedKeys().hasAny(['avatarUrl']) || (data.avatarUrl is string && data.avatarUrl.size() <= 200000));
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == getAuthUid();
+      allow list: if isSignedIn() && userId == getAuthUid();
+
+      allow create: if isSignedIn()
+                    && isValidId(userId)
+                    && userId == getAuthUid()
+                    && isValidUserCreate(incoming())
+                    && incoming().keys().size() >= 1 && incoming().keys().size() <= 3;
+
+      allow update: if isSignedIn()
+                    && isValidId(userId)
+                    && userId == getAuthUid()
+                    && isValidUserUpdate(incoming(), incoming().diff(existing()))
+                    && (
+                      incoming().diff(existing()).affectedKeys().hasOnly(['bio', 'avatarUrl', 'updatedAt'])
+                    );
+    }
+
+    match /vibes/{vibeId} {
+      allow get: if isSignedIn() && isValidId(vibeId) && existing().userId == getAuthUid();
+      allow list: if isSignedIn() && existing().userId == getAuthUid();
+      
+      allow create: if isSignedIn() 
+                    && isValidId(vibeId) 
+                    && isValidVibeCreate(incoming())
+                    // Require strict mapping for fields
+                    && incoming().keys().size() >= 8 && incoming().keys().size() <= 13;
+                    
+      allow update: if isSignedIn()
+                    && isValidId(vibeId)
+                    && existing().userId == getAuthUid()
+                    && isValidVibeUpdate(incoming(), incoming().diff(existing()))
+                    && (
+                      // Only allow updating specific fields
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'date', 'tone', 'energyLevel', 'sentiment', 'uiState', 'transcription', 'culturalContext', 'verse', 'imageUrl', 'updatedAt'
+                      ])
+                    );
+
+      allow delete: if isSignedIn() 
+                    && isValidId(vibeId) 
+                    && existing().userId == getAuthUid();
+    }
+  }
+}
